@@ -38,3 +38,4 @@ extern void fallback_entropy_getbytes(void* dest, size_t size);
 #endif
 
 #endif // ENTROPY_H_INCLUDED
+

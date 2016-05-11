@@ -1,7 +1,8 @@
 # 
 # PCG Random Number Generation for C.
 # 
-# Copyright 2014 Melissa O'Neill <oneill@pcg-random.org>
+# Original work Copyright 2014 Melissa O'Neill <oneill@pcg-random.org>
+# Modified work Copyright 2016 João Paquim
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,27 +22,49 @@
 #     http://www.pcg-random.org
 #
 
-all:
-	cd src; $(MAKE)
-	cd test-low; $(MAKE)
-	cd test-high; $(MAKE)
-	cd sample; $(MAKE)
+# Simplified Makefile for library compilation
 
-PREFIX = /usr/local
+TGT_LIB = pcg_random
+TGT_LIB_A = lib$(TGT_LIB).a
 
-install: all
-	install src/libpcg_random.a $PREFIX/lib
-	install -m 0644 include/pcg_variants.h $PREFIX/include
+prefix ?= install
+INST_INC := $(prefix)/include/$(TGT_LIB)
+INST_LIB := $(prefix)/lib
+INST_CLN := $(INST_INC) $(INST_LIB)/$(TGT_LIB_A)
 
-test:   all
-	cd test-low; $(MAKE) test
-	cd test-high; $(MAKE) test
+SRC = $(wildcard src/*.c)
+OBJ = $(SRC:src/%.c=build/%.o)
 
-clean:
-	cd src; $(MAKE) clean
-	cd test-low; $(MAKE) clean
-	cd test-high; $(MAKE) clean
-	cd sample; $(MAKE) clean
-	rm -f extras/*.o
+CPPFLAGS += -Iinclude
+CFLAGS += -O3 -std=c99
 
-	
+$(TGT_LIB_A): $(OBJ)
+	@echo archiving: $(TGT_LIB_A)
+	@$(AR) -rcs $@ $^
+	@echo successfully built: $@
+
+build/%.o: src/%.c
+	@mkdir -p build
+	@echo compiling: $< '->' $@
+	@$(CC) $(CPPFLAGS) $(CFLAGS) -c -MMD -MP $< -o $@
+
+-include build/*.d
+
+install: $(TGT_LIB_A)
+	@echo installing to $(prefix)
+	@mkdir -p $(INST_INC)
+	@mkdir -p $(INST_LIB)
+	@install -m 0644 include/* $(INST_INC)
+	@install -m 0644 $^ $(INST_LIB)
+	@echo successfully installed: $(INST_CLN)
+	@echo $(INST_CLN) >> .uninstall
+
+uninstall:
+	@$(RM) -r $(shell cat .uninstall) .uninstall
+	@echo successfully uninstalled: $(TGT_LIB)
+
+clean clean-all:
+	@echo cleaning: build $(TGT_LIB_A)
+	@$(RM) -r build $(TGT_LIB_A)
+
+.PHONY: install clean clean-all
